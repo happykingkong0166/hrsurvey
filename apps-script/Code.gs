@@ -2,6 +2,7 @@
  * 인사조직 진단 설문 — 응답 수신용 Apps Script
  *
  * 설치: 스프레드시트 「인사조직 진단 설문 응답」 → 확장 프로그램 → Apps Script
+ *       (메뉴가 안 보이면 https://script.google.com → 새 프로젝트 에서 해도 됩니다)
  *       이 코드를 전부 붙여 넣고 저장 → 배포 → 새 배포 → 유형: 웹 앱
  *       (실행 사용자: 나 / 액세스 권한: 모든 사용자) → 배포 → 웹 앱 URL 복사
  *
@@ -10,6 +11,7 @@
  */
 
 // ===== 설정 =====
+const SPREADSHEET_ID = '1dfiPqZFOdF8_3eWhypKB1IXlGwBimgwUvpCp5BTI0Js'; // 응답 스프레드시트
 const SHEET_NAME = '응답';      // 응답이 쌓일 시트 이름
 const SEND_EMAIL = true;        // 제출 알림 메일 보내기 (false로 바꾸면 끔)
 const NOTIFY_TO  = '';          // 받을 주소. 비워 두면 스프레드시트 소유자(배포한 계정)에게 보냄
@@ -76,7 +78,7 @@ function doGet() {
 }
 
 function getSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) sh = ss.insertSheet(SHEET_NAME);
   if (sh.getLastRow() === 0) sh.appendRow(HEADER);
