@@ -275,6 +275,9 @@ table.tb tr.areahead td{background:var(--surface-2);font-weight:700;font-size:13
 <div id="tip"></div>
 
 <script>
+/* 응답 수신용 구글 Apps Script 웹 앱 주소. 비워 두면 응답 코드 방식으로 동작합니다. */
+const SHEET_ENDPOINT = '';
+
 /* ---------------- Survey definition ---------------- */
 const AREAS = [
   {id:'A1', sec:1, name:'경영방침 및 계획'},
@@ -489,15 +492,34 @@ $('#submitBtn').addEventListener('click', async()=>{
   if(db && (isOwner || (user && await safe(()=>user.canEdit())))){
     try{ await db.collection('responses').doc(r.id).set(toDoc(r)); saved=true; }catch(e){ saved=false; }
   }
+  if(!saved && SHEET_ENDPOINT){ saved = await sendToSheet(r) ? 'sheet' : false; }
   $('#submitBtn').disabled=false; $('#submitBtn').textContent='설문 제출';
   showDone(r, saved);
 });
+async function sendToSheet(r){
+  const payload=JSON.stringify({id:r.id,a:r.a,p:r.p,j:r.j,je:r.je,g:r.g,ten:r.ten,c:r.c});
+  for(let attempt=0; attempt<2; attempt++){
+    const ctl=new AbortController(); const t=setTimeout(()=>ctl.abort(),25000);
+    try{
+      const res=await fetch(SHEET_ENDPOINT,{method:'POST',body:payload,signal:ctl.signal});
+      clearTimeout(t);
+      const j=await res.json();
+      if(j && j.ok) return true;
+      if(j && j.error && /bad/.test(j.error)) return false;
+    }catch(e){ clearTimeout(t); }
+  }
+  return false;
+}
 async function safe(fn){ try{ return await fn(); }catch(e){ return null; } }
 
 function showDone(r, saved){
   $('#surveyForm').hidden=true; $('#doneView').hidden=false; $('#progWrap').style.visibility='hidden';
   window.scrollTo({top:0});
-  if(saved){
+  if(saved==='sheet'){
+    $('#doneTitle').textContent='응답해 주셔서 감사합니다';
+    $('#doneBody').innerHTML = `<p>응답이 정상적으로 제출되었습니다. 창을 닫으셔도 됩니다.</p>
+      <p class="hint" style="margin-top:22px">같은 기기에서 다른 분이 응답해야 하는 경우 <a href="#" id="againBtn">새 설문 작성</a></p>`;
+  }else if(saved){
     $('#doneTitle').textContent = isOwner ? '응답이 저장되었습니다' : '응답해 주셔서 감사합니다';
     $('#doneBody').innerHTML = `<p class="hint">응답이 분석 데이터에 바로 반영되었습니다.</p>
       <button class="btn" id="againBtn" style="margin-top:12px">${isOwner?'다음 설문지 입력':'처음으로'}</button>`;
